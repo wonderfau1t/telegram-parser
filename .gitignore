@@ -1,0 +1,10 @@
+.env
+**/.env
+**/.venv/
+**/__pycache__/
+*.session
+*.session-*
+sender/chats.json
+sender/chats.json.tmp
+*.sqlite3
+*.sqlite3-*

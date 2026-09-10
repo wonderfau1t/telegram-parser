@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+chats.json
+chats.json.tmp
+*.sqlite3
+*.sqlite3-*

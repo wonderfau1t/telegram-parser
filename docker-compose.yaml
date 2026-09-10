@@ -1,0 +1,72 @@
+name: telegram-parser
+
+x-app: &app
+  restart: unless-stopped
+  init: true
+  env_file: .env
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-rabbit-env: &rabbit-env
+  RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set RABBITMQ_USER}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}@rabbitmq:5672/
+  RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-telegram_posts}
+
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  parser:
+    <<: *app
+    build: ./parser
+    environment:
+      <<: *rabbit-env
+      API_ID: ${API_ID:?Set API_ID}
+      API_HASH: ${API_HASH:?Set API_HASH}
+      CHAT_ID: ${CHAT_ID:?Set CHAT_ID}
+      API_SESSION_NAME: /data/parser
+    volumes:
+      - parser_data:/data
+
+  sender:
+    <<: *app
+    build: ./sender
+    environment:
+      <<: *rabbit-env
+      BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN}
+      ADMIN_ID: ${ADMIN_ID:?Set ADMIN_ID}
+      CHATS_FILE: /data/chats.json
+    volumes:
+      - sender_data:/data
+
+volumes:
+  rabbitmq_data:
+  parser_data:
+  sender_data:
