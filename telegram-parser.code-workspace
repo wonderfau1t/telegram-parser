@@ -1,0 +1,7 @@
+{
+    "folders": [
+        {"name": "Infra", "path": "."},
+        {"name": "Parser service", "path": "parser"},
+        {"name": "Sender service", "path": "sender"},
+    ]
+}

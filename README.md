@@ -49,6 +49,34 @@
    docker compose run --rm --no-deps parser python -m src.auth
    ```
 
+### Вход по QR-коду (удобно на VPS)
+
+Альтернатива интерактивному входу без ввода телефона и кода из SMS:
+
+```bash
+docker compose build parser
+docker compose run --rm --no-deps parser python -m src.qr_auth
+```
+
+В журналах команды печатается ASCII-QR-код и ссылка `tg://login?token=...`,
+а картинка сохраняется в volume: `parser_data/qr.png` (внутри контейнера —
+`/data/qr.png`). Откройте Telegram на телефоне: **Настройки → Устройства →
+Подключить устройство** — и наведите камеру на QR. Ссылку можно открыть и в
+Telegram Desktop на компьютере: он предложит подтвердить вход.
+
+Если QR истёк, команда автоматически сгенерирует новый. При включённой 2FA
+передайте пароль через переменную окружения:
+
+```bash
+TELEGRAM_2FA_PASSWORD='пароль' docker compose run --rm --no-deps parser python -m src.qr_auth
+```
+
+Сессия сохраняется в volume `parser_data`, поэтому пересборка и перезапуск
+контейнеров повторной авторизации не требуют. Забрать PNG с QR на хост:
+
+```bash
+docker compose cp parser:/data/qr.png ./qr.png
+```
    Сессия сохранится в том `parser_data`. Обычный сервис не запрашивает код:
    без готовой сессии он завершится с инструкцией пройти авторизацию.
 
