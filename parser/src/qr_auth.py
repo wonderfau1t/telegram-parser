@@ -21,7 +21,7 @@ import io
 import os
 import sys
 
-from telethon import TelegramClient, errors
+from telethon import TelegramClient, errors, utils
 
 from src.client import create_client
 from src.config import get_settings
@@ -53,6 +53,32 @@ async def authorize(client: TelegramClient) -> None:
     me = await client.get_me()
     print(f"Авторизация завершена: {me.first_name} (id={me.id}).")
     print("Сессия сохранена, можно запускать парсер: docker compose up -d parser")
+    await check_source_chat(client)
+
+
+async def check_source_chat(client: TelegramClient) -> None:
+    """Предупредить сразу, если аккаунт не имеет доступа к исходному каналу."""
+    from src.config import get_settings
+
+    chat_id = get_settings().chat_id.strip()
+    source = int(chat_id) if chat_id.lstrip("-").isdigit() else chat_id
+    try:
+        chat = await client.get_entity(source)
+    except ValueError:
+        async for dialog in client.iter_dialogs():
+            if utils.get_peer_id(dialog.entity) == source:
+                chat = dialog.entity
+                break
+        else:
+            print(
+                f"ВНИМАНИЕ: аккаунт не имеет доступа к CHAT_ID={chat_id} или "
+                "ни разу его не открывал. Откройте канал этим аккаунтом (или "
+                "вступите в него) и перезапустите парсер, иначе он упадёт "
+                "с ошибкой 'Could not find the input entity'."
+            )
+            return
+    title = getattr(chat, "title", None) or getattr(chat, "username", chat_id)
+    print(f"Исходный канал доступен: {title}")
 
 
 async def handle_password(client: TelegramClient) -> None:

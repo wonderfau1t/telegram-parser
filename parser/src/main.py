@@ -2,7 +2,7 @@ import asyncio
 from functools import partial
 
 import aio_pika
-from telethon import events
+from telethon import events, utils
 
 from src.client import create_client
 from src.config import get_settings
@@ -29,9 +29,21 @@ async def main():
             try:
                 chat = await client.get_entity(source)
             except ValueError:
-                # A new session may not know a channel's access_hash yet.
-                await client.get_dialogs()
-                chat = await client.get_entity(source)
+                # Числовой ID Telethon разрешает только по access_hash из кэша
+                # сессии: он появляется, когда аккаунт открывал этот канал.
+                async for dialog in client.iter_dialogs():
+                    if utils.get_peer_id(dialog.entity) == source:
+                        chat = dialog.entity
+                        break
+                else:
+                    me = await client.get_me()
+                    raise RuntimeError(
+                        f"Аккаунт (id={me.id}, {me.first_name}) не имеет доступа к "
+                        f"каналу {chat_id} или ни разу его не открывал. Откройте "
+                        "канал этим аккаунтом в Telegram (или вступите в него), "
+                        "затем перезапустите парсер. Для публичных каналов можно "
+                        "указать в CHAT_ID username, например CHAT_ID=@durov."
+                    )
 
             @client.on(events.NewMessage(chats=chat))
             async def on_new_message(event):
